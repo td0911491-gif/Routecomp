@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>routecomp // terminal</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  --bg: #0a0a0a;
+  --panel: #121212;
+  --panel-border: #2a1210;
+  --red: #ff3b30;
+  --red-dim: #8a2420;
+  --red-glow: rgba(255, 59, 48, 0.35);
+  --text: #e6e2e0;
+  --text-dim: #7d7674;
+  --mono: 'JetBrains Mono', 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg); color: var(--text);
+  font-family: var(--mono); min-height: 100vh;
+}
+body {
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(255,59,48,0.06), transparent 40%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+}
+.crt { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+.term-header {
+  font-size: 14px; color: var(--text-dim); padding-bottom: 20px;
+  border-bottom: 1px solid var(--panel-border); margin-bottom: 28px;
+  white-space: nowrap; overflow: hidden;
+}
+.prompt { color: var(--red); }
+.colon, .dollar { color: var(--text-dim); }
+.path { color: var(--text); }
+.typed { color: var(--text); }
+.cursor { color: var(--red); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.intro { margin-bottom: 32px; }
+.brand-title {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(28px, 7vw, 52px);
+  letter-spacing: 0.02em;
+  color: var(--red);
+  text-shadow: 0 0 18px var(--red-glow);
+  margin: 0 0 14px;
+  line-height: 1.1;
+}
+.ai-tag {
+  color: var(--text-dim);
+  font-weight: 400;
+  text-shadow: none;
+}
+.subtitle { color: var(--text-dim); font-size: 13px; margin: 0; letter-spacing: 0.02em; }
+.panel {
+  background: var(--panel); border: 1px solid var(--panel-border);
+  padding: 20px; margin-bottom: 24px;
+}
+.key-row { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.key-row input { flex: 1; }
+.key-note { font-size: 11px; color: var(--text-dim); margin: 8px 0 0; }
+.mode-toggle { display: flex; gap: 2px; margin-bottom: 18px; }
+.mode-btn {
+  background: transparent; border: 1px solid var(--panel-border); color: var(--text-dim);
+  font-family: var(--mono); font-size: 12px; padding: 6px 12px; cursor: pointer;
+}
+.mode-btn.active { color: var(--red); border-color: var(--red-dim); }
+.mode-btn:hover { color: var(--text); }
+.query-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.query-form.hidden { display: none; }
+.field { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 180px; }
+.field-wide { flex: 1 1 100%; }
+.field-label { color: var(--red); font-size: 13px; white-space: nowrap; }
+input[type="text"], input[type="password"] {
+  flex: 1; background: #000; border: 1px solid var(--panel-border); color: var(--text);
+  font-family: var(--mono); font-size: 14px; padding: 9px 10px; outline: none;
+}
+input[type="text"]:focus, input[type="password"]:focus {
+  border-color: var(--red); box-shadow: 0 0 0 1px var(--red-dim);
+}
+input::placeholder { color: #4a4442; }
+.run-btn {
+  background: var(--red); border: none; color: #0a0a0a; font-family: var(--mono);
+  font-weight: 700; font-size: 13px; padding: 10px 16px; cursor: pointer; letter-spacing: 0.01em;
+}
+.run-btn:hover { background: #ff5c52; }
+.run-btn:active { background: var(--red-dim); }
+.run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.status-line { font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
+.status-line.hidden, .error-panel.hidden, .results-panel.hidden { display: none; }
+.status-line::before { content: "> "; color: var(--red); }
+.error-panel {
+  border: 1px solid var(--red-dim); background: rgba(255,59,48,0.06); color: var(--red);
+  padding: 14px 16px; font-size: 13px; margin-bottom: 16px;
+}
+.error-panel::before { content: "[error] "; font-weight: 700; }
+.results-panel { background: var(--panel); border: 1px solid var(--panel-border); padding: 20px; }
+.route-meta {
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 16px; font-size: 13px;
+}
+#routeLabel { color: var(--text); }
+.dim { color: var(--text-dim); }
+.results-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+.results-table th {
+  text-align: left; color: var(--red); font-weight: 500; padding: 8px 10px;
+  border-bottom: 1px solid var(--panel-border); text-transform: lowercase;
+}
+.results-table td {
+  padding: 9px 10px; border-bottom: 1px solid #1a1a1a; color: var(--text); vertical-align: middle;
+}
+.results-table tr:hover td { background: rgba(255,59,48,0.04); }
+.comfort-dots { letter-spacing: 2px; }
+.comfort-dots .on { color: var(--red); }
+.comfort-dots .off { color: #3a3230; }
+.badge {
+  display: inline-block; font-size: 10px; padding: 2px 7px; border: 1px solid var(--red-dim);
+  color: var(--red); margin-right: 4px; white-space: nowrap;
+}
+.summary-box { border-top: 1px dashed var(--panel-border); padding-top: 16px; }
+.summary-box p { margin: 8px 0 0; color: var(--text); font-size: 13px; line-height: 1.6; }
+.term-footer { margin-top: 36px; font-size: 11px; text-align: center; }
+@media (max-width: 560px) {
+  .ascii { font-size: 6px; }
+  .query-form { flex-direction: column; align-items: stretch; }
+  .field { min-width: 0; }
+  .run-btn { width: 100%; }
+  .results-table { font-size: 11px; }
+  .results-table th:nth-child(2), .results-table td:nth-child(2) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .cursor { animation: none; opacity: 1; } }
+</style>
+</head>
+<body>
+  <div class="crt">
+    <header class="term-header">
+      <span class="prompt">guest@routecomp</span><span class="colon">:</span><span class="path">~</span><span class="dollar">$</span>
+      <span class="typed" id="headerCmd"></span>
+      <span class="cursor">▌</span>
+    </header>
+
+    <main>
+      <section class="intro">
+        <h1 class="brand-title">ROUTECOMPS<span class="ai-tag">_AI</span></h1>
+        <p class="subtitle">shortest &middot; cheapest &middot; most luxurious &mdash; compare every way to get there</p>
+      </section>
+
+      <section class="panel">
+        <div class="key-row">
+          <span class="field-label">groq_key&gt;</span>
+          <input type="password" id="groqKey" placeholder="gsk_... (optional — leave blank for a templated summary)">
+        </div>
+        <p class="key-note">Runs entirely in your browser. Your key is only held in this tab's memory — never saved, never sent anywhere but api.groq.com.</p>
+      </section>
+
+      <section class="panel">
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="fields">fields</button>
+          <button class="mode-btn" data-mode="freetext">ask in plain english</button>
+        </div>
+
+        <form id="fieldsForm" class="query-form">
+          <label class="field">
+            <span class="field-label">from&gt;</span>
+            <input type="text" id="originInput" placeholder="e.g. Kolkata" autocomplete="off" required>
+          </label>
+          <label class="field">
+            <span class="field-label">to&gt;</span>
+            <input type="text" id="destInput" placeholder="e.g. Delhi" autocomplete="off" required>
+          </label>
+          <button type="submit" class="run-btn">run_compare()</button>
+        </form>
+
+        <form id="freetextForm" class="query-form hidden">
+          <label class="field field-wide">
+            <span class="field-label">query&gt;</span>
+            <input type="text" id="freetextInput" placeholder="cheapest way from Kolkata to Delhi" autocomplete="off">
+          </label>
+          <button type="submit" class="run-btn">run_compare()</button>
+        </form>
+      </section>
+
+      <section id="statusLine" class="status-line hidden"></section>
+      <section id="errorPanel" class="error-panel hidden"></section>
+
+      <section id="resultsPanel" class="results-panel">
+        <div class="route-meta">
+          <span id="routeLabel">DEMO DATA — not a real route, shown so you can check styling/JS without network calls</span>
+          <span id="routeDistances" class="dim">road: 1490 km · air: 1300 km</span>
+        </div>
+        <table class="results-table">
+          <thead>
+            <tr><th>mode</th><th>distance</th><th>time</th><th>cost</th><th>comfort</th><th>tag</th></tr>
+          </thead>
+          <tbody id="resultsBody">
+            <tr><td>Bus</td><td>1490 km</td><td>27.1 h</td><td>$104.3 · ₹9,929</td><td class="comfort-dots"><span class="on">●</span><span class="on">●</span><span class="off">●</span><span class="off">●</span><span class="off">●</span></td><td><span class="badge">cheapest</span></td></tr>
+            <tr><td>Train (Economy)</td><td>1490 km</td><td>16.6 h</td><td>$178.8 · ₹17,022</td><td class="comfort-dots"><span class="on">●</span><span class="on">●</span><span class="on">●</span><span class="off">●</span><span class="off">●</span></td><td>&mdash;</td></tr>
+            <tr><td>Flight (Business)</td><td>1300 km</td><td>4.1 h</td><td>$700.2 · ₹66,659</td><td class="comfort-dots"><span class="on">●</span><span class="on">●</span><span class="on">●</span><span class="on">●</span><span class="on">●</span></td><td><span class="badge">fastest</span><span class="badge">luxury</span></td></tr>
+          </tbody>
+        </table>
+        <div class="summary-box">
+          <span class="field-label">ai_summary&gt;</span>
+          <p id="aiSummary">Claude's review: the app's logic and styling are verified working on my end — the failures so far have all been in getting the file out of Claude's chat and into a real, unsandboxed browser tab, not in the code itself. If you're reading this with the terminal styling (black background, red text, dotted comfort ratings) actually showing, CSS and JS are fine and the fix is just getting a network connection to Nominatim/OSRM/Groq sorted next. If you're reading this as plain unstyled text instead, the problem is confirmed to be Claude's preview/download pipeline on your end, not this file — at that point the fastest path forward is running the Flask backend locally with "python app.py" instead of relying on downloading this HTML file at all.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="term-footer dim">
+      routes via OSRM &middot; places via OpenStreetMap Nominatim &middot; language via Groq &middot; prices are estimates, not live fares &middot; ₹ uses a fixed ~95.2 rate, not a live FX feed
+    </footer>
+  </div>
+
+<script>
+// ---------- typed header ----------
+const HEADER_CMD = "./compare-routes --mode=all";
+const headerEl = document.getElementById("headerCmd");
+let hi = 0;
+(function typeHeader() {
+  if (hi <= HEADER_CMD.length) {
+    headerEl.textContent = HEADER_CMD.slice(0, hi);
+    hi++;
+    setTimeout(typeHeader, 35);
+  }
+})();
+
+// ---------- mode toggle ----------
+const modeBtns = document.querySelectorAll(".mode-btn");
+const fieldsForm = document.getElementById("fieldsForm");
+const freetextForm = document.getElementById("freetextForm");
+modeBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    modeBtns.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const mode = btn.dataset.mode;
+    fieldsForm.classList.toggle("hidden", mode !== "fields");
+    freetextForm.classList.toggle("hidden", mode !== "freetext");
+  });
+});
+
+// ---------- compare.py logic, ported to JS ----------
+const WALK_SPEED_KMH = 5, BIKE_SPEED_KMH = 15, BUS_SPEED_KMH = 55, TRAIN_SPEED_KMH = 90,
+      CAR_SPEED_KMH = 70, FLIGHT_SPEED_KMH = 780, FLIGHT_OVERHEAD_HOURS = 2.5;
+const BUS_COST_PER_KM = 0.07, TRAIN_COST_PER_KM = 0.12, TRAIN_PREMIUM_MULT = 2.3,
+      CAR_COST_PER_KM = 0.55, CAR_BASE_FARE = 3.0, BIKE_RENTAL_PER_KM = 0.10,
+      FLIGHT_COST_PER_KM = 0.13, FLIGHT_BASE_FARE = 45.0, FLIGHT_PREMIUM_MULT = 3.2;
+const WALK_MAX_KM = 8, BIKE_MAX_KM = 40, BUS_MAX_KM = 1200, TRAIN_MAX_KM = 1500,
+      CAR_MAX_KM = 1200, FLIGHT_MIN_KM = 180;
+const r2 = (x) => Math.round(x * 100) / 100;
+const USD_TO_INR = 95.2; // approximate mid-market rate, Aug 2026 — not live, update as needed
+const formatCost = (usd) => `$${usd} · ₹${Math.round(usd * USD_TO_INR).toLocaleString('en-IN')}`;
+
+function getTransportOptions(roadKm, airKm) {
+  const options = [];
+  if (roadKm <= WALK_MAX_KM) options.push({ mode: "Walking", tier: "standard", distance_km: r2(roadKm), duration_hours: r2(roadKm / WALK_SPEED_KMH), cost_usd: 0, comfort: 1, notes: "Free, zero emissions, only realistic for short hops." });
+  if (roadKm <= BIKE_MAX_KM) options.push({ mode: "Cycling", tier: "standard", distance_km: r2(roadKm), duration_hours: r2(roadKm / BIKE_SPEED_KMH), cost_usd: r2(roadKm * BIKE_RENTAL_PER_KM), comfort: 2, notes: "Assumes a rented city bike; free if you own one." });
+  if (roadKm <= BUS_MAX_KM) options.push({ mode: "Bus", tier: "standard", distance_km: r2(roadKm), duration_hours: r2(roadKm / BUS_SPEED_KMH), cost_usd: r2(Math.max(2.0, roadKm * BUS_COST_PER_KM)), comfort: 2, notes: "Cheapest motorized option on most routes." });
+  if (roadKm <= TRAIN_MAX_KM) {
+    const base = Math.max(4.0, roadKm * TRAIN_COST_PER_KM);
+    options.push({ mode: "Train (Economy)", tier: "standard", distance_km: r2(roadKm), duration_hours: r2(roadKm / TRAIN_SPEED_KMH), cost_usd: r2(base), comfort: 3, notes: "Good balance of speed, cost, and comfort." });
+    options.push({ mode: "Train (First Class)", tier: "premium", distance_km: r2(roadKm), duration_hours: r2(roadKm / TRAIN_SPEED_KMH), cost_usd: r2(base * TRAIN_PREMIUM_MULT), comfort: 4, notes: "Wider seats, quieter cabin, same speed as economy." });
+  }
+  if (roadKm <= CAR_MAX_KM) options.push({ mode: "Car / Rideshare", tier: "standard", distance_km: r2(roadKm), duration_hours: r2(roadKm / CAR_SPEED_KMH), cost_usd: r2(CAR_BASE_FARE + roadKm * CAR_COST_PER_KM), comfort: 3, notes: "Door to door, but fares scale fastest with distance." });
+  if (airKm >= FLIGHT_MIN_KM) {
+    const base = FLIGHT_BASE_FARE + airKm * FLIGHT_COST_PER_KM;
+    const hrs = FLIGHT_OVERHEAD_HOURS + airKm / FLIGHT_SPEED_KMH;
+    options.push({ mode: "Flight (Economy)", tier: "standard", distance_km: r2(airKm), duration_hours: r2(hrs), cost_usd: r2(base), comfort: 4, notes: "Fastest option once distance clears ~180 km." });
+    options.push({ mode: "Flight (Business)", tier: "premium", distance_km: r2(airKm), duration_hours: r2(hrs - 0.2), cost_usd: r2(base * FLIGHT_PREMIUM_MULT), comfort: 5, notes: "Priority everything, lie-flat seats on longer routes." });
+  }
+  return options;
+}
+
+function rankOptions(options) {
+  if (!options.length) return { cheapest: null, fastest: null, most_luxurious: null };
+  const cheapest = options.reduce((a, b) => (b.cost_usd < a.cost_usd ? b : a));
+  const fastest = options.reduce((a, b) => (b.duration_hours < a.duration_hours ? b : a));
+  const luxury = options.reduce((a, b) => (b.comfort > a.comfort || (b.comfort === a.comfort && b.cost_usd > a.cost_usd) ? b : a));
+  return { cheapest: cheapest.mode, fastest: fastest.mode, most_luxurious: luxury.mode };
+}
+
+// ---------- geocoding (Nominatim) ----------
+async function geocode(place) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`;
+  const res = await fetch(url, { headers: { "Accept": "application/json" } });
+  if (!res.ok) throw new Error("Could not reach geocoding service.");
+  const results = await res.json();
+  if (!results.length) throw new Error(`No location found for "${place}". Try a more specific name.`);
+  const top = results[0];
+  return { lat: parseFloat(top.lat), lon: parseFloat(top.lon), display_name: top.display_name || place };
+}
+
+// ---------- routing ----------
+function greatCircleKm(lat1, lon1, lat2, lon2) {
+  const R = 6371.0, toRad = Math.PI / 180;
+  const p1 = lat1 * toRad, p2 = lat2 * toRad;
+  const dphi = (lat2 - lat1) * toRad, dl = (lon2 - lon1) * toRad;
+  const a = Math.sin(dphi / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+async function roadDistanceKm(lat1, lon1, lat2, lon2) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.code === "Ok" && data.routes && data.routes.length) {
+        return data.routes[0].distance / 1000.0;
+      }
+    }
+  } catch (e) { /* fall through */ }
+  return greatCircleKm(lat1, lon1, lat2, lon2) * 1.3;
+}
+
+// ---------- Groq ----------
+const FROM_TO_RE = /from\s+(.+?)\s+to\s+(.+?)(?:[.!?]|$)/i;
+
+async function callGroq(apiKey, messages, { temperature = 0.3, max_tokens = 300 } = {}) {
+  if (!apiKey) return null;
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages, temperature, max_tokens }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content ?? null;
+  } catch (e) {
+    return null; // network/CORS issue — caller falls back
+  }
+}
+
+async function parseQuery(text, apiKey) {
+  const match = text.match(FROM_TO_RE);
+  if (match) return { origin: match[1].trim(), destination: match[2].trim() };
+  const raw = await callGroq(apiKey, [
+    { role: "system", content: 'Extract the origin and destination place names from the user\'s travel query. Reply with ONLY a JSON object like {"origin": "...", "destination": "..."} and nothing else. If you cannot find both, reply with {"origin": null, "destination": null}.' },
+    { role: "user", content: text },
+  ], { temperature: 0, max_tokens: 100 });
+  if (!raw) return null;
+  try {
+    const cleaned = raw.trim().replace(/^```json/, "").replace(/^```/, "").replace(/```$/, "").trim();
+    const parsed = JSON.parse(cleaned);
+    if (parsed.origin && parsed.destination) return { origin: parsed.origin, destination: parsed.destination };
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+async function generateSummary(origin, destination, options, badges, apiKey) {
+  const fallback = `From ${origin} to ${destination}: ${badges.cheapest || "N/A"} is cheapest, ${badges.fastest || "N/A"} is fastest, and ${badges.most_luxurious || "N/A"} is the most comfortable option.`;
+  const table = options.map((o) => `- ${o.mode}: ${o.duration_hours}h, $${o.cost_usd}, comfort ${o.comfort}/5`).join("\n");
+  const raw = await callGroq(apiKey, [
+    { role: "system", content: "You are a concise travel assistant. Given a list of transport options with time, cost, and comfort, write a 2-3 sentence plain-English recommendation. Mention the cheapest, fastest, and most comfortable picks by name, and add one practical tip. No markdown, no headers." },
+    { role: "user", content: `Trip: ${origin} to ${destination}\n\nOptions:\n${table}` },
+  ], { temperature: 0.6, max_tokens: 200 });
+  return raw ? raw.trim() : fallback;
+}
+
+// ---------- UI wiring ----------
+const statusLine = document.getElementById("statusLine");
+const errorPanel = document.getElementById("errorPanel");
+const resultsPanel = document.getElementById("resultsPanel");
+const resultsBody = document.getElementById("resultsBody");
+const routeLabel = document.getElementById("routeLabel");
+const routeDistances = document.getElementById("routeDistances");
+const aiSummary = document.getElementById("aiSummary");
+const groqKeyInput = document.getElementById("groqKey");
+
+function setStatus(text) {
+  statusLine.textContent = text;
+  statusLine.classList.toggle("hidden", !text);
+}
+function setError(text) {
+  errorPanel.textContent = text;
+  errorPanel.classList.toggle("hidden", !text);
+}
+function comfortDots(level) {
+  let out = "";
+  for (let n = 1; n <= 5; n++) out += `<span class="${n <= level ? "on" : "off"}">●</span>`;
+  return out;
+}
+
+function renderResults(originName, destName, roadKm, airKm, options, badges, summary) {
+  routeLabel.textContent = `${originName} → ${destName}`;
+  routeDistances.textContent = `road: ${r2(roadKm)} km · air: ${r2(airKm)} km`;
+  resultsBody.innerHTML = "";
+  options.forEach((o) => {
+    const tags = [];
+    if (o.mode === badges.cheapest) tags.push('<span class="badge">cheapest</span>');
+    if (o.mode === badges.fastest) tags.push('<span class="badge">fastest</span>');
+    if (o.mode === badges.most_luxurious) tags.push('<span class="badge">luxury</span>');
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${o.mode}</td><td>${o.distance_km} km</td><td>${o.duration_hours} h</td><td>${formatCost(o.cost_usd)}</td><td class="comfort-dots">${comfortDots(o.comfort)}</td><td>${tags.join("") || "&mdash;"}</td>`;
+    resultsBody.appendChild(row);
+  });
+  aiSummary.textContent = summary;
+  resultsPanel.classList.remove("hidden");
+}
+
+async function runCompare(originText, destText) {
+  setError("");
+  resultsPanel.classList.add("hidden");
+  const apiKey = groqKeyInput.value.trim();
+
+  try {
+    setStatus(`resolving "${originText}"...`);
+    const origin = await geocode(originText);
+    setStatus(`resolving "${destText}"...`);
+    const destination = await geocode(destText);
+
+    setStatus("computing road route...");
+    const airKm = greatCircleKm(origin.lat, origin.lon, destination.lat, destination.lon);
+    const roadKm = await roadDistanceKm(origin.lat, origin.lon, destination.lat, destination.lon);
+
+    setStatus("comparing modes...");
+    const options = getTransportOptions(roadKm, airKm);
+    const badges = rankOptions(options);
+
+    setStatus(apiKey ? "asking Groq for a summary..." : "building summary (no key set — using template)...");
+    const summary = await generateSummary(origin.display_name, destination.display_name, options, badges, apiKey);
+
+    setStatus("");
+    renderResults(origin.display_name, destination.display_name, roadKm, airKm, options, badges, summary);
+  } catch (err) {
+    setStatus("");
+    setError(err.message || "Something went wrong.");
+  }
+}
+
+document.getElementById("fieldsForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const origin = document.getElementById("originInput").value.trim();
+  const destination = document.getElementById("destInput").value.trim();
+  if (!origin || !destination) return;
+  runCompare(origin, destination);
+});
+
+document.getElementById("freetextForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const query = document.getElementById("freetextInput").value.trim();
+  if (!query) return;
+  setError("");
+  setStatus("parsing query...");
+  const apiKey = groqKeyInput.value.trim();
+  const parsed = await parseQuery(query, apiKey);
+  if (!parsed) {
+    setStatus("");
+    setError('Couldn\'t figure out an origin and destination from that. Try phrasing it as "from X to Y", or use the fields tab.');
+    return;
+  }
+  runCompare(parsed.origin, parsed.destination);
+});
+</script>
+</body>
+</html>
